@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "craft-controller"
+version = "0.0.1"
+description = "A Discord bot to control a Minecraft Bedrock server remotely."
+authors = ["LamerLink <36551116+LamerLink@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "craftlink", from = "src"}]
+
+[tool.poetry.scripts]
+craftlink = "craftlink.console:main"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+discord-py = "^2.3.2"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+bump2version = "^1.0.1"
+flake8 = "^6.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
