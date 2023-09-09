@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "craft-controller"
+name = "craftlink"
 version = "0.0.1"
 description = "A Discord bot to control a Minecraft Bedrock server remotely."
 authors = ["LamerLink <36551116+LamerLink@users.noreply.github.com>"]
