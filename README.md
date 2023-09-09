@@ -4,7 +4,9 @@ A Discord bot to control a Minecraft Bedrock server remotely.
 
 ## Examples
 
-<>
+![Starting and stopping server via Discord.](https://github.com/michaeleveringham/CraftLink/blob/main/images/start-stop-server.png)
+
+![Sending a message from Discord to Minecraft.](https://github.com/michaeleveringham/CraftLink/blob/main/images/discord-chat-to-game.jpg)
 
 ## Security Disclaimer
 
