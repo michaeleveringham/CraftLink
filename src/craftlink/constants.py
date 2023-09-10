@@ -1,10 +1,12 @@
 CMD_PREFIX = "!"
 
+
 def commands_message(command_names: tuple[str], server_type: str) -> str:
     server_commands = "\n- ".join(
         [f"`{CMD_PREFIX}{i}`" for i in command_names]
     )
     return f"**{server_type} Server Commands**\n- {server_commands}"
+
 
 # Administrative or maintenance commands, usually outside server context.
 ADMIN_COMMANDS = {

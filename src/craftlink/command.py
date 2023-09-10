@@ -73,13 +73,13 @@ class CraftCommander():
         defaults to sending all.
         """
         if not category:
-                commands_message = (
+            commands_message = (
                 f"{ADMIN_COMMANDS_MESSAGE}"
                 "\n\nUse `!listcommands bedrock` or `!listcommands java`"
                 " to show server commands."
             )
         elif category == "admin":
-            commands_message = ADMIN_COMMANDS_MESSAGE 
+            commands_message = ADMIN_COMMANDS_MESSAGE
         elif category == "bedrock":
             commands_message = BEDROCK_COMMANDS_MESSAGE
         elif category == "java":
@@ -155,7 +155,7 @@ class CraftCommander():
                 cwd=self.server_path,
             )
         )
-        return f"Started Minecraft server."
+        return "Started Minecraft server."
 
     async def _cmd_stopserver(self, *args) -> str:
         """
@@ -166,7 +166,7 @@ class CraftCommander():
         if not await self.server_running:
             return "The server is already shutdown."
         await self.send_server_command("stop")
-        return f"Shutdown server gracefully."
+        return "Shutdown Minecraft server gracefully."
 
     async def _cmd_killserver(self, *args) -> str:
         """Force stop the server process."""
@@ -174,7 +174,7 @@ class CraftCommander():
             self.server_proc.kill()
         except Exception:
             pass
-        return f"Shutdown server forcefully."
+        return "Shutdown Minecraft server forcefully."
 
     async def send_server_command(
         self,

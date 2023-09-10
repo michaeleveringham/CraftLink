@@ -84,7 +84,7 @@ class CraftBot(discord.Client):
             message = ""
             while self.server_message_queue:
                 message += self.server_message_queue.popleft().decode()
-            if message:                    
+            if message:
                 # Drop the last newline from the messages.
                 footer = f"Messages from {self.server_type.title()} server."
                 if len(message) > 4000:
