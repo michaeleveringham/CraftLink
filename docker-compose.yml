@@ -1,0 +1,33 @@
+# Ensure your .env file is defined and designated server has been started successfully at least once.
+services:
+  bedrock:
+    build:
+      dockerfile: ./Dockerfile-bedrock
+    ports:
+      - 19132:19132/udp
+      - 19133:19133/udp
+      - 25565:25565/tcp
+      - 25565:25565/udp
+    # Server directory env var inside the container will be different.
+    environment:
+      SERVER_INSTALL_DIRECTORY: "/craftlink/server/"
+    volumes:
+      - "${SERVER_INSTALL_DIRECTORY}/allowlist.json:/craftlink/server/allowlist.json"
+      - "${SERVER_INSTALL_DIRECTORY}/permissions.json:/craftlink/server/permissions.json"
+      - "${SERVER_INSTALL_DIRECTORY}/server.properties:/craftlink/server/server.properties"
+      - "${SERVER_INSTALL_DIRECTORY}/worlds:/craftlink/server/worlds"
+    command: craftlink
+  java:
+    build:
+      dockerfile: ./Dockerfile-java
+    ports:
+      - 19132:19132/udp
+      - 19133:19133/udp
+      - 25565:25565/tcp
+      - 25565:25565/udp
+    environment:
+      SERVER_INSTALL_DIRECTORY: "/craftlink/server/"
+    # For Java, just mount the entire server directory, no need to download anything.
+    volumes:
+      - "${SERVER_INSTALL_DIRECTORY}:/craftlink/server/"
+    command: craftlink

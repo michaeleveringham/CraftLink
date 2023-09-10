@@ -54,7 +54,7 @@ Likely works on MacOS, but not yet tested.
 
 ## Running
 
-To run the server, just invoke `craftlink` with the necesary arguments/environment variables set.
+To run locally, just invoke `craftlink` with the necesary arguments/environment variables set.
 
 Required arguments:
 
@@ -68,12 +68,31 @@ Optional arguments:
 - `-m`, `--java-memory-min`, `JAVA_MEMORY_MIN` - (Java only) minimum server memory to allocate, defaults to 1024.
 - `-x`, `--java-memory-max`, `JAVA_MEMORY_MAX` - (Java only) maximum server memory to allocate, defaults to 1024.
 
+### Docker
+
+To run in a Docker container, you'll need to ensure your `.env` file is populated first.
+Copy `.env.template` and fill in the blanks.
+Ensure that `SERVER_INSTALL_DIRECTORY` is the directory to your local server files, not
+the directory in the Docker image.
+
+By default this image will mount existing server files from the host machine to the container.
+Note that for Bedrock, you only need to have the below files and folders, you don't need the executable/binary. 
+- `allowlist.json`
+- `permissions.json`
+- `server.properties`
+- `worlds`
+
+For Java, the entire directory will be mounted.
+
+Regardless of server type, ensure you run the world locally once before mounting it.
+
+When ready, run `docker compose up <server_type: java or bedrock>` to run.
+
 ## Improvements
 
 - Add tests.
 - Add user roles at the bot level to restrict certain actions.
   - Could be multiple roles such that "admins" have all perms, "mods" have less, and "users" have none or just `/say`.
-- Be cool if this could run in a container altogether.
 - Support for modded server launchers.
 
 ## Affiliate Disclaimer

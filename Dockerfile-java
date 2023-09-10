@@ -1,0 +1,25 @@
+FROM ubuntu:22.04
+ARG DEBIAN_FRONTEND=noninteractive
+
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_VERSION="1.4.0"
+
+WORKDIR /craftlink
+
+# Install install and server deps.
+RUN apt-get -y update \
+    && apt-get install -y curl software-properties-common tzdata openjdk-17-jre-headless
+# Install python, pip, and poetry.
+RUN add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get -y update \
+    && apt-get install -y python3.10 python3-pip
+RUN ln -s /usr/bin/python3 /usr/bin/python 
+RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
+ENV PATH="${PATH}:/root/.local/bin"
+RUN mkdir server
+
+COPY poetry.lock pyproject.toml ./
+COPY . .
+
+RUN poetry install 
