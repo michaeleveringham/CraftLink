@@ -2,6 +2,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import re
 from collections import deque
 from pathlib import Path
 
@@ -12,8 +14,10 @@ from craftlink.constants import (
     BEDROCK_COMMANDS_MESSAGE,
     BEDROCK_COMMAND_NAMES,
     CMD_PREFIX,
+    IGNORED_MESSAGE_PATTERNS,
     JAVA_COMMANDS_MESSAGE,
     JAVA_COMMAND_NAMES,
+    OS,
 )
 
 
@@ -38,19 +42,32 @@ class CraftCommander():
         if not server_path.is_dir():
             raise ValueError("The given server directory is invalid.")
         self.server_path = server_path
+        self.env = dict(os.environ)
+        # Set the end of line character(s) for reading from the console.
+        if OS == "windows":
+            self.eol = b"\r\n"
+        else:
+            self.eol = b"\n"
+        # Set the command based on os and server type.
         if server_type == "bedrock":
-            server_binary = server_path / "bedrock_server.exe"
-            self.server_cmd = str(server_binary.absolute()).replace("\\", "/")
+            if OS == "windows":
+                server_binary = server_path / "bedrock_server.exe"
+                self.server_cmd = str(server_binary.absolute())
+                self.server_cmd = self.server_cmd.replace("\\", "/")
+            else:
+                server_binary = server_path / "bedrock_server"
+                self.server_cmd = "./bedrock_server"
+                self.env["LD_LIBRARY_PATH"] = str(self.server_path.absolute())
         elif server_type == "java":
-            server_jar = server_path / "server.jar"
-            if not server_jar.is_file():
-                raise FileNotFoundError(f"Cannot find {server_jar.absolute()}.")
+            server_binary = server_path / "server.jar"
             mem_min, mem_max = java_mem_range
             self.server_cmd = (
                 f"java -Xmx{mem_min}M -Xms{mem_max}M -jar server.jar nogui"
             )
         else:
             raise ValueError(f"Invalid server type given, {server_type}.")
+        if not server_binary.is_file():
+            raise FileNotFoundError(f"Cannot find {server_binary.absolute()}.")
         self.allowlist_file = server_path / "allowlist.json"
         # Default to whitelist if no allowlist.
         if not self.allowlist_file.is_file():
@@ -69,8 +86,8 @@ class CraftCommander():
 
     async def _cmd_listcommands(self, category: str = None, *args) -> str:
         """
-        List available commands. Can specify admin or server commands, otherwise
-        defaults to sending all.
+        List available commands. Can specify admin or server commands,
+        otherwise defaults to sending all.
         """
         if not category:
             commands_message = (
@@ -153,6 +170,7 @@ class CraftCommander():
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 cwd=self.server_path,
+                env=self.env,
             )
         )
         return "Started Minecraft server."
@@ -207,10 +225,14 @@ class CraftCommander():
             # it hang while nothing is being sent.
             while True:
                 try:
-                    buffer = await self.server_proc.stdout.readuntil(b"\r\n")
+                    buffer = await self.server_proc.stdout.readuntil(self.eol)
                 except asyncio.exceptions.IncompleteReadError:
                     break
-                if "Running AutoCompaction" not in str(buffer):
+                # Skip spammy messages.
+                if not any(
+                    re.search(pattern, str(buffer))
+                    for pattern in IGNORED_MESSAGE_PATTERNS
+                ):
                     self.server_message_queue.append(buffer)
 
     async def dispatch_command(

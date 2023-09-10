@@ -1,3 +1,24 @@
+import sys
+import warnings
+
+
+OS = "linux"
+if sys.platform == "win32":
+    OS = "windows"
+elif sys.platform == "darwin":
+    OS = "macos"
+elif not sys.platform.startswith("linux"):
+    # Warn for unknown OS and assume it's linux to try and offer use.
+    warnings.warn("Unsupported operating system!")
+
+# Patterns for messages to skip sending.
+IGNORED_MESSAGE_PATTERNS = (
+    # Bedrock: AutoCompaction log runs often.
+    r"Running\sAutoCompaction",
+    # Java: Don't send back messages sent from the server.
+    r"\]\:\s\[Not\sSecure\]\s\[Server\].*\@Discord",
+)
+
 CMD_PREFIX = "!"
 
 
