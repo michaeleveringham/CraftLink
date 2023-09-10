@@ -7,7 +7,7 @@ from pathlib import Path
 
 import discord
 
-from craftlink.command import Commander
+from craftlink.command import CraftCommander
 from craftlink.constants import CMD_PREFIX
 
 
@@ -15,11 +15,23 @@ LOGGER = logging.getLogger(__name__)
 
 
 class CraftBot(discord.Client):
-    def __init__(self, token: str, server_dir: str, channel_id: str) -> None:
+    def __init__(
+        self, token: str,
+        server_dir: str,
+        channel_id: str,
+        server_type: str,
+        java_mem_range: tuple[int],
+    ) -> None:
         self.token = token
+        self.server_type = server_type
         server_path = Path(server_dir)
         self.server_message_queue = deque([])
-        self.commander = Commander(self, server_path, self.server_message_queue)
+        self.commander = CraftCommander(
+            server_path,
+            self.server_message_queue,
+            server_type,
+            java_mem_range,
+        )
         self.channel_id = int(channel_id)
         intents = discord.Intents.default()
         intents.message_content = True
@@ -46,12 +58,12 @@ class CraftBot(discord.Client):
 
     async def stop(self) -> None:
         """Stop the server, gracefully at first, then forcefully if needed."""
-        if await self.commander.bedrock_server_running:
+        if await self.commander.server_running:
             self.commander._cmd_stopserver(None)
         LOGGER.info("Waiting a few seconds for server to stop gracefully...")
         await asyncio.sleep(5)
         try:
-            if await self.commander.bedrock_server_running:
+            if await self.commander.server_running:
                 LOGGER.warning("Server did not stop, killing it.")
                 self.commander._cmd_killserver(None)
         except Exception:
@@ -62,12 +74,9 @@ class CraftBot(discord.Client):
         if len(message) <= 2000:
             await self.channel.send(message)
         else:
-            message_parts = message.splitlines()
-            message_header = message_parts[0]
-            message_body = "\n".join(message_parts).replace("```", "")
-            message_io = io.StringIO(message_body)
+            message_io = io.StringIO(message)
             attachment = discord.File(message_io, filename="attachment.txt")
-            await self.channel.send(content=message_header, file=attachment)
+            await self.channel.send(file=attachment)
 
     async def process_server_message_queue(self) -> None:
         """Send queued server messages to the Discord channel."""
@@ -75,12 +84,17 @@ class CraftBot(discord.Client):
             message = ""
             while self.server_message_queue:
                 message += self.server_message_queue.popleft().decode()
-            if message:
+            if message:                    
                 # Drop the last newline from the messages.
-                await self.say(
-                    f"Messages from Bedrock server:\n```{message[:-1]}```"
-                )
-            await asyncio.sleep(5)
+                footer = f"Messages from {self.server_type.title()} server."
+                if len(message) > 4000:
+                    message = f"{footer}\n{message}"
+                    await self.say(message)
+                else:
+                    embed = discord.Embed(description=f"```{message[:-1]}```")
+                    embed.set_footer(text=footer)
+                    await self.channel.send(embed=embed)
+            await asyncio.sleep(2)
 
     async def on_ready(self) -> None:
         self.channel = await self.fetch_channel(self.channel_id)

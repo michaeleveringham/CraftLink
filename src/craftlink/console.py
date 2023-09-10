@@ -19,6 +19,8 @@ async def amain(options):
         token=options.token,
         server_dir=options.server_dir,
         channel_id=options.channel_id,
+        server_type=options.server_type,
+        java_mem_range=(options.java_memory_min, options.java_memory_max),
     ) as bot:
         await bot.run()
 
@@ -41,10 +43,34 @@ def main():
     )
     parser.add_argument(
         "-d",
-        "--bedrock-server-install-directory",
-        default=os.environ.get("BEDROCK_SERVER_INSTALL_DIRECTORY", ""),
+        "--server-install-directory",
+        default=os.environ.get("SERVER_INSTALL_DIRECTORY", ""),
         dest="server_dir",
-        help="Directory that the Bedrock server executable is in.",
+        help="Directory that the server executable is in.",
+    )
+    parser.add_argument(
+        "-y",
+        "--server-type",
+        default=os.environ.get("SERVER_TYPE", "bedrock"),
+        choices=["bedrock", "java"],
+        required=False,
+        help="Type of server to be run (bedrock or java), defaults to bedrock.",
+    )
+    parser.add_argument(
+        "-m",
+        "--java-memory-min",
+        default=os.environ.get("JAVA_MEMORY_MIN", "1024"),
+        type=int,
+        required=False,
+        help="(Java only) minimum server memory to allocate, defaults to 1024.",
+    )
+    parser.add_argument(
+        "-x",
+        "--java-memory-max",
+        default=os.environ.get("JAVA_MEMORY_MAX", "1024"),
+        type=int,
+        required=False,
+        help="(Java only) maximum server memory to allocate, defaults to 1024.",
     )
     options = parser.parse_args()
     try:

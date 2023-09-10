@@ -1,105 +1,119 @@
 from __future__ import annotations
 import asyncio
-import craftlink
 import json
 import logging
 from collections import deque
 from pathlib import Path
 
 from craftlink.constants import (
-    ADMIN_COMMANDS,
+    ADMIN_COMMANDS_MESSAGE,
     ADMIN_COMMAND_NAMES,
     ALL_COMMAND_NAMES,
+    BEDROCK_COMMANDS_MESSAGE,
     BEDROCK_COMMAND_NAMES,
     CMD_PREFIX,
+    JAVA_COMMANDS_MESSAGE,
+    JAVA_COMMAND_NAMES,
 )
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class Commander():
+class CraftCommander():
     """
-    Class to dispatch commands, both to the bedrock server and administratively,
+    Class to dispatch commands, both to the server and administratively,
     e.g. commands that control the server itself (starting, updating settings).
     """
     def __init__(
         self,
-        bot: craftlink.bot.CraftBot,
         server_path: Path,
-        server_message_queue: deque
+        server_message_queue: deque,
+        server_type: str,
+        java_mem_range: tuple[int],
     ) -> None:
-        self.bedrock_server_proc = None
-        self.bot = bot
+        self.server_type = server_type
+        self.server_proc = None
         self.server_message_queue = server_message_queue
         if not server_path.is_dir():
             raise ValueError("The given server directory is invalid.")
         self.server_path = server_path
-        self.server_sh = server_path / "bedrock_server.exe"
+        if server_type == "bedrock":
+            server_binary = server_path / "bedrock_server.exe"
+            self.server_cmd = str(server_binary.absolute()).replace("\\", "/")
+        elif server_type == "java":
+            server_jar = server_path / "server.jar"
+            if not server_jar.is_file():
+                raise FileNotFoundError(f"Cannot find {server_jar.absolute()}.")
+            mem_min, mem_max = java_mem_range
+            self.server_cmd = (
+                f"java -Xmx{mem_min}M -Xms{mem_max}M -jar server.jar nogui"
+            )
+        else:
+            raise ValueError(f"Invalid server type given, {server_type}.")
         self.allowlist_file = server_path / "allowlist.json"
+        # Default to whitelist if no allowlist.
+        if not self.allowlist_file.is_file():
+            self.allowlist_file = server_path / "whitelist.json"
         # Verify no commands have been added for which we have no method.
         for command_name in ADMIN_COMMAND_NAMES:
             assert hasattr(self, f"_cmd_{command_name}")
 
     @property
-    async def bedrock_server_running(self) -> bool:
-        """Check if the Bedrock server process is active or exists."""
-        if not self.bedrock_server_proc:
+    async def server_running(self) -> bool:
+        """Check if the server process is active or exists."""
+        if not self.server_proc:
             return False
         else:
-            return self.bedrock_server_proc.returncode is None
+            return self.server_proc.returncode is None
 
-    async def _cmd_listcommands(self, args: list[str]) -> str:
+    async def _cmd_listcommands(self, category: str = None, *args) -> str:
         """
         List available commands. Can specify admin or server commands, otherwise
         defaults to sending all.
         """
-        category = args[0]
-        admin_commands = [
-            (
-                f'- `{CMD_PREFIX}{command_name}'
-                f'{" " if info["args"] else ""}{info["args"]}`'
-                f'\n  - {info["help"]}'
+        if not category:
+                commands_message = (
+                f"{ADMIN_COMMANDS_MESSAGE}"
+                "\n\nUse `!listcommands bedrock` or `!listcommands java`"
+                " to show server commands."
             )
-            for command_name, info
-            in ADMIN_COMMANDS.items()
-        ]
-        admin_commands = "\n".join(admin_commands)
-        admin_cmd_help = f"**Administrative Commands** \n{admin_commands}"
-        bedrock_commands = "\n- ".join(
-            [f"`{CMD_PREFIX}{i}`" for i in BEDROCK_COMMAND_NAMES]
-        )
-        bedrock_cmd_help = f"**Bedrock Server Commands**\n- {bedrock_commands}"
-        if category == "admin":
-            commands_message = admin_cmd_help
-        elif category == "server":
-            commands_message = bedrock_cmd_help
-        else:
-            commands_message = admin_cmd_help + "\n\n" + bedrock_cmd_help
+        elif category == "admin":
+            commands_message = ADMIN_COMMANDS_MESSAGE 
+        elif category == "bedrock":
+            commands_message = BEDROCK_COMMANDS_MESSAGE
+        elif category == "java":
+            commands_message = JAVA_COMMANDS_MESSAGE
         return commands_message
 
-    async def _cmd_adduser(self, args: list[str]) -> str:
-        """Add a user to the server's allowlist.json file."""
-        user_name = str(args[0])
-        user_xuid = str(args[1])
+    async def _cmd_adduser(self, user_name: str, user_id: str, *args) -> str:
+        """
+        Add a user to the server's allowlist.json file.
+        Better to use `whitelist` command instead of this.
+        """
+        if self.server_type == "bedrock":
+            id_name = "xuid"
+        elif self.server_type == "java":
+            id_name = "uuid"
         allowlist = json.loads(self.allowlist_file.read_text())
         if any(
-            (i["name"] == user_name or i["xuid"] == user_xuid)
+            (i["name"] == user_name or i.get(id_name) == user_id)
             for i in allowlist
         ):
             return "New user appears to be a duplicate user."
         new_entry = {
             "ignoresPlayerLimit": False,
             "name": user_name,
-            "xuid": user_xuid,
+            id_name: user_id,
         }
+        if self.server_type == "java":
+            new_entry.pop("ignoresPlayerLimit")
         allowlist.append(new_entry)
         self.allowlist_file.write_text(json.dumps(allowlist))
-        return f"Added user {user_name} ({user_xuid}) to allowlist."
+        return f"Added user {user_name} to allowlist."
 
-    async def _cmd_rmuser(self, args: list[str]) -> str:
+    async def _cmd_rmuser(self, user_name: str, *args) -> str:
         """Remove a user from the server's allowlist.json file."""
-        user_name = str(args[0])
         allowlist = json.loads(self.allowlist_file.read_text())
         if not any(i["name"] == user_name for i in allowlist):
             return f"User *\"{user_name}\"* does not appear in allowlist."
@@ -107,91 +121,93 @@ class Commander():
         self.allowlist_file.write_text(json.dumps(good_entries))
         return f"Removed user {user_name} from allowlist."
 
-    async def _cmd_userrole(self, args: list[str]) -> str:
+    async def _cmd_userrole(self, *args) -> str:
         return "Not yet implemented."
 
-    async def _cmd_changeprop(self, args: list[str]) -> str:
+    async def _cmd_changeprop(self, *args) -> str:
         return "Not yet implemented."
 
-    async def _cmd_showsettings(self, args: list[str]) -> str:
-        target_file = args[0]
-        if target_file == "allowlist":
+    async def _cmd_showsettings(self, target_file: str, *args) -> str:
+        if target_file == "allowlist" or target_file == "whitelist":
             file_path = self.allowlist_file
         elif target_file == "permissions":
             file_path = self.server_path / "permissions.json"
         elif target_file == "properties":
             file_path = self.server_path / "server.properties"
         else:
-            return f"Unrecognised file identifier *\"{target_file}\"*."
+            return f"Unrecognised file identifier, *\"{target_file}\"*."
         file_contents = file_path.read_text()
         return f"**{file_path.name}**\n```{file_contents}```"
 
-    async def _cmd_startserver(self, args: list[str] | None) -> str:
-        """Launch and assign the Bedrock server process."""
-        if await self.bedrock_server_running:
-            return "The Bedrock server already running."
-        self.bedrock_server_proc = (
+    async def _cmd_startserver(self, *args) -> str:
+        """Launch and assign the server process."""
+        if await self.server_running:
+            return "The server is already running."
+        if self.server_type == "bedrock":
+            server_cmd = [self.server_cmd]
+        elif self.server_type == "java":
+            server_cmd = self.server_cmd.split(" ")
+        self.server_proc = (
             await asyncio.subprocess.create_subprocess_exec(
-                str(self.server_sh.absolute()),
+                *server_cmd,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
+                cwd=self.server_path,
             )
         )
-        return "Started Bedrock server."
+        return f"Started Minecraft server."
 
-    async def _cmd_stopserver(self, args: list[str] | None) -> str:
+    async def _cmd_stopserver(self, *args) -> str:
         """
-        Gracefully stop the Bedrock server by sending the `/stop` command.
+        Gracefully stop the server by sending the `/stop` command.
         This command is mostly just for consistency since sending `/stop`
         does the same thing.
         """
-        if not await self.bedrock_server_running:
-            return "The Bedrock server is already shutdown."
-        await self.send_bedrock_command("stop")
-        return "Shutdown Bedrock server gracefully."
+        if not await self.server_running:
+            return "The server is already shutdown."
+        await self.send_server_command("stop")
+        return f"Shutdown server gracefully."
 
-    async def _cmd_killserver(self, args: list[str] | None) -> str:
-        """Force stop the Bedrock server process."""
+    async def _cmd_killserver(self, *args) -> str:
+        """Force stop the server process."""
         try:
-            self.bedrock_server_proc.kill()
+            self.server_proc.kill()
         except Exception:
             pass
-        return "Shutdown Bedrock server forcefully."
+        return f"Shutdown server forcefully."
 
-    async def send_bedrock_command(
+    async def send_server_command(
         self,
         command: str,
         user_name: str = "unknown",
     ) -> None:
         """
-        Send a bedrock server command. This command does not return a message
+        Send a server command. This command does not return a message
         as some commands sent to the server need no confirmation (e.g. `/say`),
         however, if the server does give some reply, it'll be picked up and
-        enqueued in the `Commander.poll_server_messages`.
+        enqueued in the `CraftCommander.poll_server_messages`.
         """
-        if not await self.bedrock_server_running:
-            return "The Bedrock server isn't running."
+        if not await self.server_running:
+            return "The server isn't running."
         # Append the Discord username to the "say" command.
         if command.startswith("say"):
             command = f'say ({user_name}@Discord){command[3:]}'
         encoded_command = bytes(command, encoding="utf-8") + b"\n"
-        self.bedrock_server_proc.stdin.write(encoded_command)
+        self.server_proc.stdin.write(encoded_command)
 
     async def poll_server_messages(self) -> None:
         """Poll the server's output and enqueue any new messages."""
         while True:
             LOGGER.debug("Polling for server messages...")
             await asyncio.sleep(1)
-            if not await self.bedrock_server_running:
+            if not await self.server_running:
                 continue
             # All stdout.<read> methods will hang waiting for an EOF so
             # using a loop to grab everythign available and then letting
             # it hang while nothing is being sent.
             while True:
                 try:
-                    buffer = await self.bedrock_server_proc.stdout.readuntil(
-                        b"\r\n"
-                    )
+                    buffer = await self.server_proc.stdout.readuntil(b"\r\n")
                 except asyncio.exceptions.IncompleteReadError:
                     break
                 if "Running AutoCompaction" not in str(buffer):
@@ -210,20 +226,20 @@ class Commander():
         if base_command not in ALL_COMMAND_NAMES:
             message = (
                 f"Command `{base_command}` is not a valid command."
-                f" Run `{CMD_PREFIX}listcommands` to list all commands."
+                f" Run `{CMD_PREFIX}listcommands` to list commands."
             )
-        elif base_command in BEDROCK_COMMAND_NAMES:
-            if not await self.bedrock_server_running:
+        elif base_command in BEDROCK_COMMAND_NAMES + JAVA_COMMAND_NAMES:
+            if not await self.server_running:
                 message = (
-                    f"Bedrock server not running... start it with the"
+                    f"Server not running... start it with the"
                     f" `{CMD_PREFIX}startserver` command and try again."
                 )
             else:
-                message = await self.send_bedrock_command(command, user_name)
+                message = await self.send_server_command(command, user_name)
         else:
             command_method = getattr(self, f"_cmd_{base_command}")
             try:
-                message = await command_method(command_args)
+                message = await command_method(*command_args)
             except Exception:
                 LOGGER.info(
                     f"Command failed. Full command: {command}",
