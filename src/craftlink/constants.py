@@ -1,5 +1,9 @@
+import logging 
 import sys
 import warnings
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 OS = "linux"
@@ -10,6 +14,7 @@ elif sys.platform == "darwin":
 elif not sys.platform.startswith("linux"):
     # Warn for unknown OS and assume it's linux to try and offer use.
     warnings.warn("Unsupported operating system!")
+LOGGER.info(f"OS detected as: {OS}.")
 
 # Patterns for messages to skip sending.
 IGNORED_MESSAGE_PATTERNS = (

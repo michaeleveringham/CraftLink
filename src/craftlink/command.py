@@ -48,34 +48,11 @@ class CraftCommander():
             self.eol = b"\r\n"
         else:
             self.eol = b"\n"
-        # Set the command based on os and server type.
-        if server_type == "bedrock":
-            if OS == "windows":
-                server_binary = server_path / "bedrock_server.exe"
-                self.server_cmd = str(server_binary.absolute())
-                self.server_cmd = self.server_cmd.replace("\\", "/")
-            else:
-                server_binary = server_path / "bedrock_server"
-                self.server_cmd = "./bedrock_server"
-                self.env["LD_LIBRARY_PATH"] = str(self.server_path.absolute())
-        elif server_type == "java":
-            server_binary = server_path / "server.jar"
-            mem_min, mem_max = java_mem_range
-            self.server_cmd = (
-                f"java -Xmx{mem_min}M -Xms{mem_max}M -jar server.jar nogui"
-            )
-        else:
-            raise ValueError(f"Invalid server type given, {server_type}.")
-        if not server_binary.is_file():
-            raise FileNotFoundError(f"Cannot find {server_binary.absolute()}.")
-        self.allowlist_file = server_path / "allowlist.json"
-        # Default to whitelist if no allowlist.
-        if not self.allowlist_file.is_file():
-            self.allowlist_file = server_path / "whitelist.json"
+        self._run_file_checks(java_mem_range)
         # Verify no commands have been added for which we have no method.
         for command_name in ADMIN_COMMAND_NAMES:
             assert hasattr(self, f"_cmd_{command_name}")
-
+    
     @property
     async def server_running(self) -> bool:
         """Check if the server process is active or exists."""
@@ -83,6 +60,33 @@ class CraftCommander():
             return False
         else:
             return self.server_proc.returncode is None
+
+    def _run_file_checks(self, java_mem_range: tuple[int]) -> None:
+        """Ensure binaries exist and assign some attributes."""
+        # Set the command based on os and server type.
+        if self.server_type == "bedrock":
+            if OS == "windows":
+                server_binary = self.server_path / "bedrock_server.exe"
+                self.server_cmd = str(server_binary.absolute())
+                self.server_cmd = self.server_cmd.replace("\\", "/")
+            else:
+                server_binary = self.server_path / "bedrock_server"
+                self.server_cmd = "./bedrock_server"
+                self.env["LD_LIBRARY_PATH"] = str(self.server_path.absolute())
+        elif self.server_type == "java":
+            server_binary = self.server_path / "server.jar"
+            mem_min, mem_max = java_mem_range
+            self.server_cmd = (
+                f"java -Xmx{mem_min}M -Xms{mem_max}M -jar server.jar nogui"
+            )
+        else:
+            raise ValueError(f"Invalid server type given, {self.server_type}.")
+        if not server_binary.is_file():
+            raise FileNotFoundError(f"Cannot find {server_binary.absolute()}.")
+        self.allowlist_file = self.server_path / "allowlist.json"
+        # Default to whitelist if no allowlist.
+        if not self.allowlist_file.is_file():
+            self.allowlist_file = self.server_path / "whitelist.json"
 
     async def _cmd_listcommands(self, category: str = None, *args) -> str:
         """

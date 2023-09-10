@@ -54,6 +54,7 @@ class CraftBot(discord.Client):
         Run the server.
         Using `discord.Client.start` here as already within the running loop.
         """
+        LOGGER.info("Starting Discord bot...")
         await self.start(self.token)
 
     async def stop(self) -> None:
@@ -113,6 +114,7 @@ class CraftBot(discord.Client):
             return
         else:
             command = text[1:]
+            LOGGER.info(f"Processing command from user {user_name}, {command}")
             response = await self.commander.dispatch_command(command, user_name)
             if response:
                 await self.say(response)
