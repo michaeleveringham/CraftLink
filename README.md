@@ -31,10 +31,6 @@ Granular permissions based on Discord role may come eventually...!
 
 ## Setup
 
-### Operating System
-
-Currently Windows only simply because that's where my server is living... but planning to bring to Linux, too!
-
 ### Dependencies
 
 Requires Python 3.9+.
@@ -49,6 +45,12 @@ or [the Java server](https://www.minecraft.net/en-us/download/server).
 You'll *probably* want to run your server manually first to configure your world. You can migrate an
 existing local world to be a server pretty easily by copying the world data into
 `<server_directory>/worlds` (Bedrock), or replacing the `<server_directory>/world` folder (Java).
+
+### Operating System
+
+Currently supports Windows and Linux (tested on Debian). 
+
+Likely works on MacOS, but not yet tested.
 
 ## Running
 

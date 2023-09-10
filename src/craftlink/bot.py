@@ -86,12 +86,15 @@ class CraftBot(discord.Client):
                 message += self.server_message_queue.popleft().decode()
             if message:
                 # Drop the last newline from the messages.
+                message = message[:-1]
+                # Send large messages as attachments,
                 footer = f"Messages from {self.server_type.title()} server."
                 if len(message) > 4000:
                     message = f"{footer}\n{message}"
                     await self.say(message)
                 else:
-                    embed = discord.Embed(description=f"```{message[:-1]}```")
+                    # Send messages as embeds when possible for cleaner look.
+                    embed = discord.Embed(description=f"```{message}```")
                     embed.set_footer(text=footer)
                     await self.channel.send(embed=embed)
             await asyncio.sleep(2)
