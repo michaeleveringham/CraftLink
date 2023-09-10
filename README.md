@@ -59,6 +59,9 @@ Required arguments:
 - `-t`, `--discord-bot-token`, `DISCORD_BOT_TOKEN` - Token to use to authenticate the Discord bot.
 - `-c`, `--discord-channel-id`, `DISCORD_CHANNEL_ID` - Discord channel ID to target the bot's messages to.
 - `-d`, `--server-install-directory`, `SERVER_INSTALL_DIRECTORY` - Directory that the server executable is in.
+
+Optional arguments:
+
 - `-y`, `--server-type`, `SERVER_TYPE` - Type of server to be run ("bedrock" or "java"), defaults to bedrock.
 - `-m`, `--java-memory-min`, `JAVA_MEMORY_MIN` - (Java only) minimum server memory to allocate, defaults to 1024.
 - `-x`, `--java-memory-max`, `JAVA_MEMORY_MAX` - (Java only) maximum server memory to allocate, defaults to 1024.
