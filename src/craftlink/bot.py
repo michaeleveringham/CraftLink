@@ -106,7 +106,7 @@ class CraftBot(discord.Client):
 
     async def on_message(self, message: discord.Message) -> None:
         """Messages starting with prefix are parsed and dispatched."""
-        if message.author == self.user:
+        if message.author == self.user or message.channel.id != self.channel_id:
             return
         user_name = message.author.name
         text = message.content
