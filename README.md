@@ -67,6 +67,24 @@ Optional arguments:
 - `-y`, `--server-type`, `SERVER_TYPE` - Type of server to be run ("bedrock" or "java"), defaults to bedrock.
 - `-m`, `--java-memory-min`, `JAVA_MEMORY_MIN` - (Java only) minimum server memory to allocate, defaults to 1024.
 - `-x`, `--java-memory-max`, `JAVA_MEMORY_MAX` - (Java only) maximum server memory to allocate, defaults to 1024.
+- `-is-arm64`, `IS_ARM64` - Flag to indicate running on arm64 architecture.
+
+### ARM64 and Bedrock
+
+You must use the switch `--isarm-64` and set the environment variable `IS_ARM64`
+so the command is dispatched correctly.
+
+The Bedrock binary is meant for x86_64 architecture; to get it to run
+on arm64 devices, [`box64`](https://github.com/ptitSeb/box64) emulation is used.
+
+If building the Bedrock Docker image, specify `--platform=linux/arm64` and
+`box64` will be installed automatically.
+
+Otherwise, ensure your system has `box64` installed and available in the `PATH`.
+
+(Shoutout to [this issue comment](https://github.com/itzg/docker-minecraft-bedrock-server/issues/140#issuecomment-1126406059)
+from [`docker-minecraft-bedrock-server`](https://github.com/itzg/docker-minecraft-bedrock-server)
+for pointing me in the right direction here.)
 
 ### Docker
 

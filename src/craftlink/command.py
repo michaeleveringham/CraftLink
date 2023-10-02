@@ -35,8 +35,10 @@ class CraftCommander():
         server_message_queue: deque,
         server_type: str,
         java_mem_range: tuple[int],
+        use_box64: bool,
     ) -> None:
         self.server_type = server_type
+        self.use_box64 = use_box64
         self.server_proc = None
         self.server_message_queue = server_message_queue
         if not server_path.is_dir():
@@ -166,8 +168,11 @@ class CraftCommander():
             return "The server is already running."
         if self.server_type == "bedrock":
             server_cmd = [self.server_cmd]
+            if self.use_box64:
+                server_cmd.insert(0, "box64")
         elif self.server_type == "java":
             server_cmd = self.server_cmd.split(" ")
+        LOGGER.info(f"Starting process: {' '.join(server_cmd)}")
         self.server_proc = (
             await asyncio.subprocess.create_subprocess_exec(
                 *server_cmd,

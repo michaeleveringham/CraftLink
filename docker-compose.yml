@@ -11,6 +11,8 @@ services:
     # Server directory env var inside the container will be different.
     environment:
       SERVER_INSTALL_DIRECTORY: "/craftlink/server/"
+      # Uncomment this if using image on arm64 arch machine.
+      #IS_ARM64: "true"
     volumes:
       - "${SERVER_INSTALL_DIRECTORY}/allowlist.json:/craftlink/server/allowlist.json"
       - "${SERVER_INSTALL_DIRECTORY}/permissions.json:/craftlink/server/permissions.json"

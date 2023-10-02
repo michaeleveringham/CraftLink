@@ -21,6 +21,18 @@ ENV PATH="${PATH}:/root/.local/bin"
 RUN wget "https://minecraft.azureedge.net/bin-linux/bedrock-server-1.20.15.01.zip" -O server.zip
 RUN unzip server.zip -d server/
 
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" != "arm64" ] ; then \
+       echo "Not targetting arm64, skipping box64 install" \
+    ; else \
+       apt install -y git build-essential cmake && \
+        git clone https://github.com/ptitSeb/box64.git && \
+        cd box64 && mkdir build && cd build && \
+        cmake .. -DRPI4ARM64=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo && \
+        make -j$(nproc) && make install && \
+        cd /craftlink \
+    ; fi
+
 COPY poetry.lock pyproject.toml ./
 COPY . .
 

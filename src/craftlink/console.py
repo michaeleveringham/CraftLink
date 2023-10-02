@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from argparse import ArgumentParser
@@ -21,6 +22,7 @@ async def amain(options):
         channel_id=options.channel_id,
         server_type=options.server_type,
         java_mem_range=(options.java_memory_min, options.java_memory_max),
+        use_box64=options.is_arm64,
     ) as bot:
         await bot.run()
 
@@ -72,7 +74,18 @@ def main():
         required=False,
         help="(Java only) maximum server memory to allocate, defaults to 1024.",
     )
+    parser.add_argument(
+        "--is-arm64",
+        action="store_true",
+        required=False,
+        help="Flag to indicate running on arm64 architecture.",
+    )
     options = parser.parse_args()
+    try:
+        if json.loads(os.environ.get("IS_ARM64")):
+            options.is_arm64 = True
+    except json.JSONDecodeError:
+        LOGGER.warning("Invalid value given for IS_ARM64.")
     try:
         asyncio.run(amain(options))
     except KeyboardInterrupt:

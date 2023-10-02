@@ -21,6 +21,7 @@ class CraftBot(discord.Client):
         channel_id: str,
         server_type: str,
         java_mem_range: tuple[int],
+        use_box64: bool,
     ) -> None:
         self.token = token
         self.server_type = server_type
@@ -31,6 +32,7 @@ class CraftBot(discord.Client):
             self.server_message_queue,
             server_type,
             java_mem_range,
+            use_box64,
         )
         self.channel_id = int(channel_id)
         intents = discord.Intents.default()
